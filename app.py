@@ -232,7 +232,6 @@ html, body, [class*="css"] {
 .stTabs [data-baseweb="tab"] {
     border-radius: 10px;
     padding: 8px 18px;
-    font-weight: 600;
     font-size: 0.92rem;
     border: 1px solid transparent;
     transition: all 0.2s ease;
