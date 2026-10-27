@@ -8,6 +8,7 @@ import streamlit as st
 
 from src.cleaner import (
     clean_reviews_dataframe,
+    read_reviews_csv, 
     dataframe_to_csv_bytes,
     dataframe_to_json_bytes,
     generate_audit_report,
@@ -409,7 +410,7 @@ source_filename = ""
 
 if uploaded is not None:
     try:
-        original_df = pd.read_csv(uploaded)
+        original_df = read_reviews_csv(uploaded)
         source_filename = uploaded.name
     except (pd.errors.ParserError, UnicodeDecodeError, ValueError) as exc:
         st.error(f"⚠️ Could not parse CSV. Verify file encoding (UTF-8 recommended). Error: {exc}")
@@ -420,7 +421,7 @@ if uploaded is not None:
 elif st.session_state.use_sample:
     sample_path = Path("data/sample_reviews.csv")
     if sample_path.exists():
-        original_df = pd.read_csv(sample_path)
+        original_df = read_reviews_csv(sample_path)
         source_filename = "sample_reviews.csv"
     else:
         st.warning("Sample review file not found on disk.")
@@ -473,6 +474,9 @@ if original_df is not None:
         remove_duplicates=remove_duplicates,
         duplicate_subset=dedup_subset,
         drop_empty_column=drop_empty_target,
+        trim_whitespace=trim_whitespace,
+        normalize_spaces=normalize_spaces,
+        strip_html=strip_html,
     )
 
     total_orig = len(original_df)
@@ -662,7 +666,7 @@ if original_df is not None:
         with filter_col:
             search_query = st.text_input("Search records (fuzzy keyword filter):", placeholder="Type any name, keyword, or text...")
         with slider_col:
-            preview_rows = st.slider("Preview Rows", min_value=5, max_value=min(200, max(10, total_orig)), value=min(15, total_orig))
+            preview_rows = st.slider("Preview Rows", min_value=1, max_value=max(2, min(200, total_orig)), value=max(1, min(15, total_orig)))
 
         # Filter display copies
         disp_orig = original_df.copy()
@@ -798,5 +802,5 @@ else:
     if sample_csv_path.exists():
         st.markdown("#### 📂 Preview Sample Dataset")
         st.caption("Click **'⚡ Load Demo CSV'** above to immediately test with this sample dataset:")
-        sample_preview = pd.read_csv(sample_csv_path)
+        sample_preview = read_reviews_csv(sample_csv_path)
         st.dataframe(sample_preview, use_container_width=True)
