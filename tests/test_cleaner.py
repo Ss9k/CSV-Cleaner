@@ -5,6 +5,7 @@ from src.cleaner import (
     clean_reviews_csv,
     clean_reviews_dataframe,
     identify_removed_records,
+    read_reviews_csv,
     retry,
 )
 
@@ -139,3 +140,44 @@ def test_identify_removed_records():
     assert any("empty" in r.lower() for r in reasons)
     assert any("duplicate" in r.lower() for r in reasons)
 
+# --- Regression tests for bug-hunt fixes ---
+
+def test_removed_report_matches_cleaner_when_text_normalization_on():
+    data = pd.DataFrame({
+        "customer": ["Alice", "Alice ", "Bob"],
+        "review": ["Great", "Great", "Ok"],
+    })
+    opts = dict(trim_whitespace=True)
+    cleaned = clean_reviews_dataframe(data, **opts)
+    removed = identify_removed_records(data, **opts)
+    assert len(cleaned) + len(removed) == len(data)
+
+
+def test_whitespace_only_cell_in_kept_row_is_not_nulled():
+    data = pd.DataFrame({
+        "customer": ["Alice", "Bob"],
+        "review": ["   ", "Fine"],
+        "rating": [5, 3],
+    })
+    cleaned = clean_reviews_dataframe(data)
+    assert len(cleaned) == 2
+    assert cleaned.loc[0, "review"] == "   "
+
+
+def test_strip_html_keeps_plain_angle_brackets_and_non_strings():
+    data = pd.DataFrame({
+        "review": ["1 <2 stars, rating >0", "<b>bold</b>"],
+        "mixed": [1, "x"],
+    })
+    cleaned = clean_reviews_dataframe(data, strip_html=True)
+    assert cleaned.loc[0, "review"] == "1 <2 stars, rating >0"
+    assert cleaned.loc[1, "review"] == "bold"
+    assert cleaned.loc[0, "mixed"] == 1
+
+
+def test_read_reviews_csv_keeps_na_like_text(tmp_path):
+    path = tmp_path / "in.csv"
+    path.write_text("customer,review,rating\nNA,None,5\nBob,,3\n")
+    df = read_reviews_csv(path)
+    assert df.loc[0, "customer"] == "NA" and df.loc[0, "review"] == "None"
+    assert pd.isna(df.loc[1, "review"])
